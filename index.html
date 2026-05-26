@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>PCIe Spec Web Reader</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --disabled: #c0c4cc;
+      --shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+      --top-h: 54px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+                   "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    button {
+      font: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      height: var(--top-h);
+      display: grid;
+      grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      padding-top: max(8px, env(safe-area-inset-top));
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar button,
+    .card-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 7px 10px;
+      min-height: 36px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .topbar button:hover,
+    .card-btn:hover,
+    .spec-card:hover,
+    .chapter-card:hover {
+      border-color: #bfdbfe;
+      background: var(--accent-soft);
+    }
+
+    .topbar .title {
+      min-width: 0;
+      text-align: center;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .disabled {
+      color: var(--disabled) !important;
+      background: #f9fafb !important;
+      border-color: var(--line) !important;
+      cursor: default !important;
+      pointer-events: none;
+    }
+
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px 16px 36px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #ffffff, #eef5ff);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 22px 20px;
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 1.55rem;
+      line-height: 1.35;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .section-title {
+      margin: 22px 4px 12px;
+      font-size: 1.05rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .spec-grid,
+    .chapter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .spec-card,
+    .chapter-card {
+      display: block;
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+      transition: 0.15s ease;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.82rem;
+      margin-bottom: 6px;
+    }
+
+    .name {
+      line-height: 1.45;
+      font-weight: 650;
+    }
+
+    .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .chapter-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .card-btn {
+      width: 100%;
+      font-weight: 650;
+    }
+
+    .card-btn.primary {
+      border-color: #bfdbfe;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .viewer {
+      display: none;
+      height: calc(100vh - var(--top-h));
+      background: #dfe3eb;
+    }
+
+    .viewer iframe {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 0;
+      background: #fff;
+    }
+
+    body.reading .page { display: none; }
+    body.reading .viewer { display: block; }
+    body.reading { overflow: hidden; }
+
+    @media (max-width: 640px) {
+      :root { --top-h: 50px; }
+
+      .topbar {
+        gap: 5px;
+        padding-left: 7px;
+        padding-right: 7px;
+      }
+
+      .topbar button {
+        padding: 6px 7px;
+        min-height: 34px;
+        border-radius: 9px;
+        font-size: 0.84rem;
+      }
+
+      .topbar .title { font-size: 0.88rem; }
+      .page { padding: 18px 10px 30px; }
+      .hero { padding: 18px 16px; border-radius: 16px; }
+      .hero h1 { font-size: 1.2rem; }
+      .spec-grid, .chapter-grid { grid-template-columns: 1fr; gap: 10px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <button id="homeBtn" type="button">首页</button>
+    <button id="catalogBtn" type="button">章节</button>
+    <button id="prevTop" type="button">上一章</button>
+    <div id="currentTitle" class="title">PCIe Spec Web Reader</div>
+    <button id="nextTop" type="button">下一章</button>
+  </header>
+
+  <main id="page" class="page">
+    <section class="hero">
+      <h1 id="heroTitle">PCIe Spec Web Reader</h1>
+      <p id="heroDesc">PCI Express specifications navigation.</p>
+    </section>
+
+    <section id="specSection">
+      <div class="section-title">Specifications</div>
+      <div id="specGrid" class="spec-grid"></div>
+    </section>
+
+    <section id="chapterSection" style="display:none;">
+      <div class="section-title" id="chapterSectionTitle">Chapters</div>
+      <div id="chapterGrid" class="chapter-grid"></div>
+    </section>
+  </main>
+
+  <main id="viewer" class="viewer">
+    <iframe id="chapterFrame" title="PCIe Spec chapter viewer"></iframe>
+  </main>
+
+  <script>
+    /*
+      推荐目录：
+      specs/pcie-6.4/pdf-html/   pdf2htmlEX 生成的原版网页
+      specs/pcie-6.4/mobile/     MinerU / Markdown 生成的手机版网页
+      specs/pcie-6.4/pdf/        原始或拆分 PDF，可选
+
+      后续添加 PCIe 4.0 / 5.0 / 6.0 时，在 specs 数组里复制一个对象即可。
+    */
+    const siteData = {
+      title: "PCIe Spec Web Reader",
+      description: "PCI Express specifications navigation.",
+      specs: [
+        {
+          id: "pcie-6.4",
+          title: "PCI Express® Base Specification Revision 6.4",
+          version: "PCIe 6.4",
+          date: "June 05, 2025",
+          paths: {
+            original: "specs/pcie-6.4/pdf-html",
+            mobile: "specs/pcie-6.4/mobile"
+          },
+          chapters: [
+            { id: "head", label: "Head", title: "Front Matter, Preface and Table of Contents", page: "", original: "PCIe_Spec_6.4_C00_Head.html", mobile: "" },
+            { id: "c01", label: "Chapter 1", title: "Introduction", page: "137", original: "PCIe_Spec_6.4_C01.html", mobile: "" },
+            { id: "c02", label: "Chapter 2", title: "Transaction Layer Specification", page: "151", original: "PCIe_Spec_6.4_C02.html", mobile: "" },
+            { id: "c03", label: "Chapter 3", title: "Data Link Layer Specification", page: "319", original: "PCIe_Spec_6.4_C03.html", mobile: "" },
+            { id: "c04", label: "Chapter 4", title: "Physical Layer Logical Block", page: "361", original: "PCIe_Spec_6.4_C04.html", mobile: "" },
+            { id: "c05", label: "Chapter 5", title: "Power Management", page: "691", original: "PCIe_Spec_6.4_C05.html", mobile: "" },
+            { id: "c06", label: "Chapter 6", title: "System Architecture", page: "747", original: "PCIe_Spec_6.4_C06.html", mobile: "" },
+            { id: "c07", label: "Chapter 7", title: "Software Initialization and Configuration", page: "1033", original: "PCIe_Spec_6.4_C07.html", mobile: "" },
+            { id: "c08", label: "Chapter 8", title: "Electrical Sub-Block", page: "1473", original: "PCIe_Spec_6.4_C08.html", mobile: "" },
+            { id: "c09", label: "Chapter 9", title: "I/O Virtualization and Sharing", page: "1593", original: "PCIe_Spec_6.4_C09.html", mobile: "" },
+            { id: "c10", label: "Chapter 10", title: "Address Translation Services (ATS)", page: "1639", original: "PCIe_Spec_6.4_C10.html", mobile: "" },
+            { id: "c11", label: "Chapter 11", title: "TEE Device Interface Security Protocol (TDISP)", page: "1689", original: "PCIe_Spec_6.4_C11.html", mobile: "" },
+            { id: "c12", label: "Chapter 12", title: "Architectural Out-of-Band Management", page: "1743", original: "PCIe_Spec_6.4_C12.html", mobile: "" },
+            { id: "appendix", label: "Appendix", title: "Appendix", page: "", original: "PCIe_Spec_6.4_C13_Appendix.html", mobile: "" },
+            { id: "ack", label: "Acknowledgements", title: "Acknowledgements", page: "", original: "PCIe_Spec_6.4_C14_Acknowledgements.html", mobile: "" }
+          ]
+        }
+
+        /*
+        添加 PCIe 5.0 示例：
+
+        ,
+        {
+          id: "pcie-5.0",
+          title: "PCI Express® Base Specification Revision 5.0",
+          version: "PCIe 5.0",
+          date: "May 22, 2019",
+          paths: {
+            original: "specs/pcie-5.0/pdf-html",
+            mobile: "specs/pcie-5.0/mobile"
+          },
+          chapters: [
+            { id: "head", label: "Head", title: "Front Matter and Table of Contents", page: "", original: "PCIe_Spec_5.0_C00_Head.html", mobile: "C00_Head.html" },
+            { id: "c01", label: "Chapter 1", title: "Introduction", page: "", original: "PCIe_Spec_5.0_C01.html", mobile: "C01.html" }
+          ]
+        }
+        */
+      ]
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    const homeBtn = $("homeBtn");
+    const catalogBtn = $("catalogBtn");
+    const prevTop = $("prevTop");
+    const nextTop = $("nextTop");
+    const currentTitle = $("currentTitle");
+    const heroTitle = $("heroTitle");
+    const heroDesc = $("heroDesc");
+    const specSection = $("specSection");
+    const specGrid = $("specGrid");
+    const chapterSection = $("chapterSection");
+    const chapterSectionTitle = $("chapterSectionTitle");
+    const chapterGrid = $("chapterGrid");
+    const frame = $("chapterFrame");
+
+    let currentSpecIndex = -1;
+    let currentChapterIndex = -1;
+    let currentMode = "original";
+
+    function specById(specId) {
+      return siteData.specs.findIndex((spec) => spec.id === specId);
+    }
+
+    function chapterById(spec, chapterId) {
+      return spec.chapters.findIndex((chapter) => chapter.id === chapterId || chapter.original === chapterId || chapter.mobile === chapterId);
+    }
+
+    function hasFile(chapter, mode) {
+      return !!chapter[mode];
+    }
+
+    function makePath(spec, chapter, mode) {
+      const base = spec.paths[mode].replace(/\/$/, "");
+      return `${base}/${chapter[mode]}`;
+    }
+
+    function specTitle(spec) {
+      return `${spec.version} · ${spec.title}`;
+    }
+
+    function chapterTitle(spec, chapter, mode) {
+      const modeText = mode === "mobile" ? "手机版" : "原版";
+      if (chapter.label === "Head") return `${spec.version} · ${chapter.title} · ${modeText}`;
+      if (chapter.label === "Appendix" || chapter.label === "Acknowledgements") return `${spec.version} · ${chapter.label} · ${modeText}`;
+      return `${spec.version} · ${chapter.label}. ${chapter.title} · ${modeText}`;
+    }
+
+    function setDisabled(el, disabled) {
+      el.classList.toggle("disabled", disabled);
+      el.disabled = !!disabled;
+      el.setAttribute("aria-disabled", disabled ? "true" : "false");
+    }
+
+    function setHash(value) {
+      if (window.location.hash !== value) {
+        window.location.hash = value;
+      }
+    }
+
+    function renderSpecs() {
+      specGrid.innerHTML = siteData.specs.map((spec) => `
+        <button class="spec-card" type="button" data-spec="${spec.id}">
+          <div class="kicker">${spec.version}</div>
+          <div class="name">${spec.title}</div>
+          <div class="meta">${spec.date || ""}</div>
+        </button>
+      `).join("");
+
+      specGrid.querySelectorAll("[data-spec]").forEach((el) => {
+        el.addEventListener("click", () => {
+          const index = specById(el.dataset.spec);
+          showSpec(index);
+        });
+      });
+    }
+
+    function renderChapters(spec) {
+      chapterGrid.innerHTML = spec.chapters.map((chapter) => {
+        const originalDisabled = hasFile(chapter, "original") ? "" : " disabled";
+        const mobileDisabled = hasFile(chapter, "mobile") ? "" : " disabled";
+        const originalText = hasFile(chapter, "original") ? "原版阅读" : "原版缺失";
+        const mobileText = hasFile(chapter, "mobile") ? "手机版" : "手机版待生成";
+
+        return `
+          <article class="chapter-card">
+            <div class="kicker">${chapter.label}</div>
+            <div class="name">${chapter.title}</div>
+            ${chapter.page ? `<div class="meta">Start page ${chapter.page}</div>` : ""}
+            <div class="chapter-actions">
+              <button class="card-btn primary${originalDisabled}" type="button" data-chapter="${chapter.id}" data-mode="original">${originalText}</button>
+              <button class="card-btn${mobileDisabled}" type="button" data-chapter="${chapter.id}" data-mode="mobile">${mobileText}</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      chapterGrid.querySelectorAll("[data-chapter]").forEach((el) => {
+        el.addEventListener("click", () => {
+          if (el.classList.contains("disabled")) return;
+          const chapterIndex = chapterById(spec, el.dataset.chapter);
+          openChapter(currentSpecIndex, chapterIndex, el.dataset.mode);
+        });
+      });
+    }
+
+    function showHome(push = true) {
+      currentSpecIndex = -1;
+      currentChapterIndex = -1;
+      frame.removeAttribute("src");
+      document.body.classList.remove("reading");
+
+      heroTitle.textContent = siteData.title;
+      heroDesc.textContent = siteData.description;
+      currentTitle.textContent = siteData.title;
+
+      specSection.style.display = "";
+      chapterSection.style.display = "none";
+
+      setDisabled(catalogBtn, siteData.specs.length !== 1);
+      setDisabled(prevTop, true);
+      setDisabled(nextTop, siteData.specs.length === 0);
+
+      document.title = siteData.title;
+
+      if (push && window.location.hash) {
+        history.pushState("", document.title, window.location.pathname + window.location.search);
+      }
+      window.scrollTo(0, 0);
+    }
+
+    function showSpec(specIndex, push = true) {
+      if (specIndex < 0 || specIndex >= siteData.specs.length) {
+        showHome(push);
+        return;
+      }
+
+      currentSpecIndex = specIndex;
+      currentChapterIndex = -1;
+      frame.removeAttribute("src");
+      document.body.classList.remove("reading");
+
+      const spec = siteData.specs[specIndex];
+      renderChapters(spec);
+
+      heroTitle.textContent = spec.title;
+      heroDesc.textContent = `${spec.version}${spec.date ? " · " + spec.date : ""}`;
+      currentTitle.textContent = specTitle(spec);
+
+      specSection.style.display = "none";
+      chapterSection.style.display = "";
+      chapterSectionTitle.textContent = "Chapters";
+
+      setDisabled(catalogBtn, false);
+      setDisabled(prevTop, true);
+      setDisabled(nextTop, spec.chapters.length === 0);
+
+      document.title = `${spec.version} - ${siteData.title}`;
+
+      if (push) setHash(`#/${spec.id}`);
+      window.scrollTo(0, 0);
+    }
+
+    function openChapter(specIndex, chapterIndex, mode = currentMode, push = true) {
+      if (specIndex < 0 || specIndex >= siteData.specs.length) {
+        showHome(push);
+        return;
+      }
+
+      const spec = siteData.specs[specIndex];
+      if (chapterIndex < 0 || chapterIndex >= spec.chapters.length) {
+        showSpec(specIndex, push);
+        return;
+      }
+
+      const chapter = spec.chapters[chapterIndex];
+      if (!hasFile(chapter, mode)) {
+        mode = hasFile(chapter, "original") ? "original" : "mobile";
+      }
+      if (!hasFile(chapter, mode)) {
+        showSpec(specIndex, push);
+        return;
+      }
+
+      currentSpecIndex = specIndex;
+      currentChapterIndex = chapterIndex;
+      currentMode = mode;
+
+      document.body.classList.add("reading");
+      frame.src = makePath(spec, chapter, mode);
+
+      currentTitle.textContent = chapterTitle(spec, chapter, mode);
+      document.title = `${chapterTitle(spec, chapter, mode)} - ${siteData.title}`;
+
+      setDisabled(catalogBtn, false);
+      setDisabled(prevTop, chapterIndex <= 0);
+      setDisabled(nextTop, chapterIndex >= spec.chapters.length - 1);
+
+      if (push) setHash(`#/${spec.id}/${chapter.id}/${mode}`);
+    }
+
+    function goCatalog() {
+      if (currentSpecIndex >= 0) {
+        showSpec(currentSpecIndex);
+      } else if (siteData.specs.length === 1) {
+        showSpec(0);
+      } else {
+        showHome(true);
+      }
+    }
+
+    function goPrev() {
+      if (currentSpecIndex >= 0 && currentChapterIndex > 0) {
+        openChapter(currentSpecIndex, currentChapterIndex - 1, currentMode);
+      }
+    }
+
+    function goNext() {
+      if (currentSpecIndex >= 0) {
+        const spec = siteData.specs[currentSpecIndex];
+        if (currentChapterIndex < 0 && spec.chapters.length > 0) {
+          openChapter(currentSpecIndex, 0, currentMode);
+        } else if (currentChapterIndex < spec.chapters.length - 1) {
+          openChapter(currentSpecIndex, currentChapterIndex + 1, currentMode);
+        }
+      } else if (siteData.specs.length > 0) {
+        showSpec(0);
+      }
+    }
+
+    function route() {
+      const hash = decodeURIComponent(window.location.hash || "");
+      const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+
+      if (parts.length === 0) {
+        showHome(false);
+        return;
+      }
+
+      const specIndex = specById(parts[0]);
+      if (specIndex < 0) {
+        showHome(false);
+        return;
+      }
+
+      if (parts.length === 1) {
+        showSpec(specIndex, false);
+        return;
+      }
+
+      const spec = siteData.specs[specIndex];
+      const chapterIndex = chapterById(spec, parts[1]);
+      if (chapterIndex < 0) {
+        showSpec(specIndex, false);
+        return;
+      }
+
+      const mode = parts[2] === "mobile" ? "mobile" : "original";
+      openChapter(specIndex, chapterIndex, mode, false);
+    }
+
+    homeBtn.addEventListener("click", () => showHome(true));
+    catalogBtn.addEventListener("click", goCatalog);
+    prevTop.addEventListener("click", goPrev);
+    nextTop.addEventListener("click", goNext);
+    window.addEventListener("hashchange", route);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") goPrev();
+      if (event.key === "ArrowRight") goNext();
+      if (event.key === "Escape") showHome(true);
+    });
+
+    renderSpecs();
+    route();
+  </script>
+</body>
+</html>
