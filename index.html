@@ -40,7 +40,7 @@
       z-index: 1000;
       height: var(--top-h);
       display: grid;
-      grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+      grid-template-columns: auto auto auto minmax(0, 1fr) auto auto;
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
@@ -50,8 +50,7 @@
       border-bottom: 1px solid var(--line);
     }
 
-    .topbar button,
-    .card-btn {
+    .topbar button {
       border: 1px solid var(--line);
       background: #fff;
       color: var(--text);
@@ -66,11 +65,17 @@
     }
 
     .topbar button:hover,
-    .card-btn:hover,
     .spec-card:hover,
     .chapter-card:hover {
       border-color: #bfdbfe;
       background: var(--accent-soft);
+    }
+
+    .mode-btn {
+      min-width: 42px;
+      font-size: 1.05rem;
+      padding-left: 9px !important;
+      padding-right: 9px !important;
     }
 
     .topbar .title {
@@ -164,24 +169,6 @@
       line-height: 1.5;
     }
 
-    .chapter-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .card-btn {
-      width: 100%;
-      font-weight: 650;
-    }
-
-    .card-btn.primary {
-      border-color: #bfdbfe;
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
     .viewer {
       display: none;
       height: calc(100vh - var(--top-h));
@@ -205,18 +192,25 @@
 
       .topbar {
         gap: 5px;
-        padding-left: 7px;
-        padding-right: 7px;
+        padding-left: 6px;
+        padding-right: 6px;
       }
 
       .topbar button {
-        padding: 6px 7px;
+        padding: 6px 6px;
         min-height: 34px;
         border-radius: 9px;
-        font-size: 0.84rem;
+        font-size: 0.82rem;
       }
 
-      .topbar .title { font-size: 0.88rem; }
+      .mode-btn {
+        min-width: 34px;
+        font-size: 1rem;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+      }
+
+      .topbar .title { font-size: 0.86rem; }
       .page { padding: 18px 10px 30px; }
       .hero { padding: 18px 16px; border-radius: 16px; }
       .hero h1 { font-size: 1.2rem; }
@@ -231,6 +225,7 @@
     <button id="catalogBtn" type="button">章节</button>
     <button id="prevTop" type="button">上一章</button>
     <div id="currentTitle" class="title">PCIe Spec Web Reader</div>
+    <button id="modeBtn" class="mode-btn" type="button" title="切换原版/手机版" aria-label="切换原版/手机版">💻</button>
     <button id="nextTop" type="button">下一章</button>
   </header>
 
@@ -324,6 +319,7 @@
     const catalogBtn = $("catalogBtn");
     const prevTop = $("prevTop");
     const nextTop = $("nextTop");
+    const modeBtn = $("modeBtn");
     const currentTitle = $("currentTitle");
     const heroTitle = $("heroTitle");
     const heroDesc = $("heroDesc");
@@ -336,7 +332,7 @@
 
     let currentSpecIndex = -1;
     let currentChapterIndex = -1;
-    let currentMode = "original";
+    let currentMode = localStorage.getItem("pcie_reader_mode") || "original";
 
     function specById(specId) {
       return siteData.specs.findIndex((spec) => spec.id === specId);
@@ -359,17 +355,24 @@
       return `${spec.version} · ${spec.title}`;
     }
 
-    function chapterTitle(spec, chapter, mode) {
-      const modeText = mode === "mobile" ? "手机版" : "原版";
-      if (chapter.label === "Head") return `${spec.version} · ${chapter.title} · ${modeText}`;
-      if (chapter.label === "Appendix" || chapter.label === "Acknowledgements") return `${spec.version} · ${chapter.label} · ${modeText}`;
-      return `${spec.version} · ${chapter.label}. ${chapter.title} · ${modeText}`;
+    function chapterTitle(spec, chapter) {
+      if (chapter.label === "Head") return `${spec.version} · ${chapter.title}`;
+      if (chapter.label === "Appendix" || chapter.label === "Acknowledgements") return `${spec.version} · ${chapter.label}`;
+      return `${spec.version} · ${chapter.label}. ${chapter.title}`;
     }
 
     function setDisabled(el, disabled) {
       el.classList.toggle("disabled", disabled);
       el.disabled = !!disabled;
       el.setAttribute("aria-disabled", disabled ? "true" : "false");
+    }
+
+    function updateModeButton() {
+      const isMobile = currentMode === "mobile";
+      modeBtn.textContent = isMobile ? "📱" : "💻";
+      modeBtn.title = isMobile ? "当前：手机版，点击切换到原版" : "当前：原版，点击切换到手机版";
+      modeBtn.setAttribute("aria-label", modeBtn.title);
+      localStorage.setItem("pcie_reader_mode", currentMode);
     }
 
     function setHash(value) {
@@ -396,32 +399,27 @@
     }
 
     function renderChapters(spec) {
-      chapterGrid.innerHTML = spec.chapters.map((chapter) => {
-        const originalDisabled = hasFile(chapter, "original") ? "" : " disabled";
-        const mobileDisabled = hasFile(chapter, "mobile") ? "" : " disabled";
-        const originalText = hasFile(chapter, "original") ? "原版阅读" : "原版缺失";
-        const mobileText = hasFile(chapter, "mobile") ? "手机版" : "手机版待生成";
-
-        return `
-          <article class="chapter-card">
-            <div class="kicker">${chapter.label}</div>
-            <div class="name">${chapter.title}</div>
-            ${chapter.page ? `<div class="meta">Start page ${chapter.page}</div>` : ""}
-            <div class="chapter-actions">
-              <button class="card-btn primary${originalDisabled}" type="button" data-chapter="${chapter.id}" data-mode="original">${originalText}</button>
-              <button class="card-btn${mobileDisabled}" type="button" data-chapter="${chapter.id}" data-mode="mobile">${mobileText}</button>
-            </div>
-          </article>
-        `;
-      }).join("");
+      chapterGrid.innerHTML = spec.chapters.map((chapter) => `
+        <button class="chapter-card" type="button" data-chapter="${chapter.id}">
+          <div class="kicker">${chapter.label}</div>
+          <div class="name">${chapter.title}</div>
+          ${chapter.page ? `<div class="meta">Start page ${chapter.page}</div>` : ""}
+        </button>
+      `).join("");
 
       chapterGrid.querySelectorAll("[data-chapter]").forEach((el) => {
         el.addEventListener("click", () => {
-          if (el.classList.contains("disabled")) return;
           const chapterIndex = chapterById(spec, el.dataset.chapter);
-          openChapter(currentSpecIndex, chapterIndex, el.dataset.mode);
+          openChapter(currentSpecIndex, chapterIndex, currentMode);
         });
       });
+    }
+
+    function preferredModeForChapter(chapter, mode) {
+      if (hasFile(chapter, mode)) return mode;
+      if (hasFile(chapter, "original")) return "original";
+      if (hasFile(chapter, "mobile")) return "mobile";
+      return "";
     }
 
     function showHome(push = true) {
@@ -447,6 +445,7 @@
         history.pushState("", document.title, window.location.pathname + window.location.search);
       }
       window.scrollTo(0, 0);
+      updateModeButton();
     }
 
     function showSpec(specIndex, push = true) {
@@ -479,6 +478,7 @@
 
       if (push) setHash(`#/${spec.id}`);
       window.scrollTo(0, 0);
+      updateModeButton();
     }
 
     function openChapter(specIndex, chapterIndex, mode = currentMode, push = true) {
@@ -494,29 +494,30 @@
       }
 
       const chapter = spec.chapters[chapterIndex];
-      if (!hasFile(chapter, mode)) {
-        mode = hasFile(chapter, "original") ? "original" : "mobile";
-      }
-      if (!hasFile(chapter, mode)) {
+      const realMode = preferredModeForChapter(chapter, mode);
+
+      if (!realMode) {
         showSpec(specIndex, push);
         return;
       }
 
       currentSpecIndex = specIndex;
       currentChapterIndex = chapterIndex;
-      currentMode = mode;
+      currentMode = realMode;
 
       document.body.classList.add("reading");
-      frame.src = makePath(spec, chapter, mode);
+      frame.src = makePath(spec, chapter, realMode);
 
-      currentTitle.textContent = chapterTitle(spec, chapter, mode);
-      document.title = `${chapterTitle(spec, chapter, mode)} - ${siteData.title}`;
+      currentTitle.textContent = chapterTitle(spec, chapter);
+      document.title = `${chapterTitle(spec, chapter)} - ${siteData.title}`;
 
       setDisabled(catalogBtn, false);
       setDisabled(prevTop, chapterIndex <= 0);
       setDisabled(nextTop, chapterIndex >= spec.chapters.length - 1);
 
-      if (push) setHash(`#/${spec.id}/${chapter.id}/${mode}`);
+      updateModeButton();
+
+      if (push) setHash(`#/${spec.id}/${chapter.id}/${realMode}`);
     }
 
     function goCatalog() {
@@ -546,6 +547,27 @@
       } else if (siteData.specs.length > 0) {
         showSpec(0);
       }
+    }
+
+    function toggleMode() {
+      const nextMode = currentMode === "mobile" ? "original" : "mobile";
+
+      if (currentSpecIndex >= 0 && currentChapterIndex >= 0) {
+        const spec = siteData.specs[currentSpecIndex];
+        const chapter = spec.chapters[currentChapterIndex];
+
+        if (!hasFile(chapter, nextMode)) {
+          alert(nextMode === "mobile" ? "当前章节还没有手机版。" : "当前章节还没有原版页面。");
+          return;
+        }
+
+        currentMode = nextMode;
+        openChapter(currentSpecIndex, currentChapterIndex, currentMode);
+        return;
+      }
+
+      currentMode = nextMode;
+      updateModeButton();
     }
 
     function route() {
@@ -583,6 +605,7 @@
     catalogBtn.addEventListener("click", goCatalog);
     prevTop.addEventListener("click", goPrev);
     nextTop.addEventListener("click", goNext);
+    modeBtn.addEventListener("click", toggleMode);
     window.addEventListener("hashchange", route);
 
     document.addEventListener("keydown", (event) => {
@@ -592,6 +615,7 @@
     });
 
     renderSpecs();
+    updateModeButton();
     route();
   </script>
 </body>
