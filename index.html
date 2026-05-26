@@ -50,7 +50,8 @@
       border-bottom: 1px solid var(--line);
     }
 
-    .topbar button {
+    .topbar button,
+    .mobile-menu button {
       border: 1px solid var(--line);
       background: #fff;
       color: var(--text);
@@ -65,14 +66,22 @@
     }
 
     .topbar button:hover,
+    .mobile-menu button:hover,
     .spec-card:hover,
     .chapter-card:hover {
       border-color: #bfdbfe;
       background: var(--accent-soft);
     }
 
-    .mode-btn,
-    .side-btn {
+    .mobile-menu-btn {
+      display: none !important;
+      min-width: 38px;
+      font-size: 1.15rem;
+      padding-left: 9px !important;
+      padding-right: 9px !important;
+    }
+
+    .icon-btn {
       min-width: 42px;
       font-size: 1.05rem;
       padding-left: 9px !important;
@@ -94,6 +103,32 @@
       border-color: var(--line) !important;
       cursor: default !important;
       pointer-events: none;
+    }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: var(--top-h);
+      left: 8px;
+      right: 8px;
+      z-index: 999;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .mobile-menu.open {
+      display: grid;
+    }
+
+    .mobile-menu button {
+      width: 100%;
+      font-weight: 650;
     }
 
     .page {
@@ -192,45 +227,70 @@
       :root { --top-h: 50px; }
 
       .topbar {
-        gap: 5px;
-        padding-left: 6px;
-        padding-right: 6px;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 8px;
+        padding-left: 8px;
+        padding-right: 8px;
       }
 
-      .topbar button {
-        padding: 6px 6px;
-        min-height: 34px;
-        border-radius: 9px;
-        font-size: 0.82rem;
+      .mobile-menu-btn {
+        display: inline-flex !important;
       }
 
-      .mode-btn,
-      .side-btn {
-        min-width: 34px;
-        font-size: 1rem;
-        padding-left: 6px !important;
-        padding-right: 6px !important;
+      .desktop-btn {
+        display: none !important;
       }
 
-      .topbar .title { font-size: 0.86rem; }
+      .topbar .title {
+        text-align: left;
+        font-size: 0.95rem;
+      }
+
+      .mobile-menu {
+        display: none;
+      }
+
+      .mobile-menu.open {
+        display: grid;
+      }
+
       .page { padding: 18px 10px 30px; }
       .hero { padding: 18px 16px; border-radius: 16px; }
       .hero h1 { font-size: 1.2rem; }
       .spec-grid, .chapter-grid { grid-template-columns: 1fr; gap: 10px; }
+    }
+
+    @media (min-width: 641px) {
+      .mobile-menu {
+        display: none !important;
+      }
     }
   </style>
 </head>
 
 <body>
   <header class="topbar">
-    <button id="homeBtn" type="button">首页</button>
-    <button id="catalogBtn" type="button">章节</button>
-    <button id="sideBtn" class="side-btn" type="button" title="显示/隐藏左侧目录" aria-label="显示/隐藏左侧目录">☰</button>
-    <button id="prevTop" type="button">上一章</button>
+    <button id="menuBtn" class="mobile-menu-btn" type="button" title="打开菜单" aria-label="打开菜单">☰</button>
+
+    <button id="homeBtn" class="desktop-btn" type="button">首页</button>
+    <button id="catalogBtn" class="desktop-btn" type="button">章节</button>
+    <button id="outlineBtn" class="desktop-btn icon-btn" type="button" title="显示/隐藏左侧大纲" aria-label="显示/隐藏左侧大纲">📑</button>
+    <button id="prevTop" class="desktop-btn" type="button">上一章</button>
+
     <div id="currentTitle" class="title">PCIe Spec Web Reader</div>
-    <button id="modeBtn" class="mode-btn" type="button" title="切换原版/手机版" aria-label="切换原版/手机版">💻</button>
-    <button id="nextTop" type="button">下一章</button>
+
+    <button id="modeBtn" class="desktop-btn icon-btn" type="button" title="切换原版/手机版" aria-label="切换原版/手机版">💻</button>
+    <button id="nextTop" class="desktop-btn" type="button">下一章</button>
   </header>
+
+  <nav id="mobileMenu" class="mobile-menu" aria-label="mobile navigation">
+    <button id="homeBtnM" type="button">首页</button>
+    <button id="catalogBtnM" type="button">章节</button>
+    <button id="outlineBtnM" type="button">📑 大纲</button>
+    <button id="modeBtnM" type="button">💻 原版</button>
+    <button id="prevTopM" type="button">上一章</button>
+    <button id="nextTopM" type="button">下一章</button>
+  </nav>
 
   <main id="page" class="page">
     <section class="hero">
@@ -318,12 +378,23 @@
 
     const $ = (id) => document.getElementById(id);
 
+    const menuBtn = $("menuBtn");
+    const mobileMenu = $("mobileMenu");
+
     const homeBtn = $("homeBtn");
     const catalogBtn = $("catalogBtn");
-    const sideBtn = $("sideBtn");
+    const outlineBtn = $("outlineBtn");
     const prevTop = $("prevTop");
     const nextTop = $("nextTop");
     const modeBtn = $("modeBtn");
+
+    const homeBtnM = $("homeBtnM");
+    const catalogBtnM = $("catalogBtnM");
+    const outlineBtnM = $("outlineBtnM");
+    const prevTopM = $("prevTopM");
+    const nextTopM = $("nextTopM");
+    const modeBtnM = $("modeBtnM");
+
     const currentTitle = $("currentTitle");
     const heroTitle = $("heroTitle");
     const heroDesc = $("heroDesc");
@@ -337,7 +408,7 @@
     let currentSpecIndex = -1;
     let currentChapterIndex = -1;
     let currentMode = localStorage.getItem("pcie_reader_mode") || "original";
-    let sideVisible = localStorage.getItem("pcie_reader_sidebar") !== "hidden";
+    let outlineVisible = localStorage.getItem("pcie_reader_outline") !== "hidden";
 
     function specById(specId) {
       return siteData.specs.findIndex((spec) => spec.id === specId);
@@ -372,43 +443,72 @@
       el.setAttribute("aria-disabled", disabled ? "true" : "false");
     }
 
+    function setDisabledBoth(desktopEl, mobileEl, disabled) {
+      setDisabled(desktopEl, disabled);
+      setDisabled(mobileEl, disabled);
+    }
+
+    function closeMobileMenu() {
+      mobileMenu.classList.remove("open");
+      menuBtn.textContent = "☰";
+      menuBtn.title = "打开菜单";
+      menuBtn.setAttribute("aria-label", "打开菜单");
+    }
+
+    function toggleMobileMenu() {
+      const open = mobileMenu.classList.toggle("open");
+      menuBtn.textContent = open ? "×" : "☰";
+      menuBtn.title = open ? "关闭菜单" : "打开菜单";
+      menuBtn.setAttribute("aria-label", menuBtn.title);
+    }
+
     function updateModeButton() {
       const isMobile = currentMode === "mobile";
       modeBtn.textContent = isMobile ? "📱" : "💻";
       modeBtn.title = isMobile ? "当前：手机版，点击切换到原版" : "当前：原版，点击切换到手机版";
       modeBtn.setAttribute("aria-label", modeBtn.title);
+
+      modeBtnM.textContent = isMobile ? "📱 手机版" : "💻 原版";
+      modeBtnM.title = modeBtn.title;
+      modeBtnM.setAttribute("aria-label", modeBtn.title);
+
       localStorage.setItem("pcie_reader_mode", currentMode);
     }
 
-    function updateSideButton() {
-      sideBtn.textContent = sideVisible ? "☰" : "☷";
-      sideBtn.title = sideVisible ? "隐藏左侧目录" : "显示左侧目录";
-      sideBtn.setAttribute("aria-label", sideBtn.title);
-      localStorage.setItem("pcie_reader_sidebar", sideVisible ? "visible" : "hidden");
+    function updateOutlineButton() {
+      outlineBtn.textContent = "📑";
+      outlineBtn.title = outlineVisible ? "隐藏左侧大纲" : "显示左侧大纲";
+      outlineBtn.setAttribute("aria-label", outlineBtn.title);
+
+      outlineBtnM.textContent = outlineVisible ? "📑 隐藏大纲" : "📑 显示大纲";
+      outlineBtnM.title = outlineBtn.title;
+      outlineBtnM.setAttribute("aria-label", outlineBtn.title);
+
+      localStorage.setItem("pcie_reader_outline", outlineVisible ? "visible" : "hidden");
     }
 
-    function injectSidebarStyle() {
+    function injectOutlineStyle() {
       const iframeDoc = frame.contentDocument || frame.contentWindow?.document;
       if (!iframeDoc) return;
 
-      let style = iframeDoc.getElementById("pcie-reader-sidebar-style");
+      let style = iframeDoc.getElementById("pcie-reader-outline-style");
       if (!style) {
         style = iframeDoc.createElement("style");
-        style.id = "pcie-reader-sidebar-style";
+        style.id = "pcie-reader-outline-style";
         iframeDoc.head.appendChild(style);
       }
 
-      if (sideVisible) {
+      if (outlineVisible) {
         style.textContent = "";
-        iframeDoc.documentElement.classList.remove("pcie-sidebar-hidden");
+        iframeDoc.documentElement.classList.remove("pcie-outline-hidden");
         return;
       }
 
       style.textContent = `
-        html.pcie-sidebar-hidden #sidebar,
-        html.pcie-sidebar-hidden .sidebar,
-        html.pcie-sidebar-hidden #outline,
-        html.pcie-sidebar-hidden .outline {
+        html.pcie-outline-hidden #sidebar,
+        html.pcie-outline-hidden .sidebar,
+        html.pcie-outline-hidden #outline,
+        html.pcie-outline-hidden .outline {
           display: none !important;
           visibility: hidden !important;
           width: 0 !important;
@@ -416,28 +516,28 @@
           max-width: 0 !important;
         }
 
-        html.pcie-sidebar-hidden #page-container,
-        html.pcie-sidebar-hidden .page-container,
-        html.pcie-sidebar-hidden #page_container {
+        html.pcie-outline-hidden #page-container,
+        html.pcie-outline-hidden .page-container,
+        html.pcie-outline-hidden #page_container {
           left: 0 !important;
           margin-left: 0 !important;
           padding-left: 0 !important;
           transform: none !important;
         }
 
-        html.pcie-sidebar-hidden body {
+        html.pcie-outline-hidden body {
           margin-left: 0 !important;
           overflow-x: auto !important;
         }
       `;
-      iframeDoc.documentElement.classList.add("pcie-sidebar-hidden");
+      iframeDoc.documentElement.classList.add("pcie-outline-hidden");
     }
 
-    function toggleSidebar() {
-      sideVisible = !sideVisible;
-      updateSideButton();
+    function toggleOutline() {
+      outlineVisible = !outlineVisible;
+      updateOutlineButton();
       try {
-        injectSidebarStyle();
+        injectOutlineStyle();
       } catch (e) {
         console.warn("Cannot access iframe document. Make sure chapter HTML is same-origin.", e);
       }
@@ -503,10 +603,10 @@
       specSection.style.display = "";
       chapterSection.style.display = "none";
 
-      setDisabled(catalogBtn, siteData.specs.length !== 1);
-      setDisabled(sideBtn, true);
-      setDisabled(prevTop, true);
-      setDisabled(nextTop, siteData.specs.length === 0);
+      setDisabledBoth(catalogBtn, catalogBtnM, siteData.specs.length !== 1);
+      setDisabledBoth(outlineBtn, outlineBtnM, true);
+      setDisabledBoth(prevTop, prevTopM, true);
+      setDisabledBoth(nextTop, nextTopM, siteData.specs.length === 0);
 
       document.title = siteData.title;
 
@@ -515,6 +615,7 @@
       }
       window.scrollTo(0, 0);
       updateModeButton();
+      updateOutlineButton();
     }
 
     function showSpec(specIndex, push = true) {
@@ -539,16 +640,17 @@
       chapterSection.style.display = "";
       chapterSectionTitle.textContent = "Chapters";
 
-      setDisabled(catalogBtn, false);
-      setDisabled(sideBtn, true);
-      setDisabled(prevTop, true);
-      setDisabled(nextTop, spec.chapters.length === 0);
+      setDisabledBoth(catalogBtn, catalogBtnM, false);
+      setDisabledBoth(outlineBtn, outlineBtnM, true);
+      setDisabledBoth(prevTop, prevTopM, true);
+      setDisabledBoth(nextTop, nextTopM, spec.chapters.length === 0);
 
       document.title = `${spec.version} - ${siteData.title}`;
 
       if (push) setHash(`#/${spec.id}`);
       window.scrollTo(0, 0);
       updateModeButton();
+      updateOutlineButton();
     }
 
     function openChapter(specIndex, chapterIndex, mode = currentMode, push = true) {
@@ -581,12 +683,13 @@
       currentTitle.textContent = chapterTitle(spec, chapter);
       document.title = `${chapterTitle(spec, chapter)} - ${siteData.title}`;
 
-      setDisabled(catalogBtn, false);
-      setDisabled(sideBtn, false);
-      setDisabled(prevTop, chapterIndex <= 0);
-      setDisabled(nextTop, chapterIndex >= spec.chapters.length - 1);
+      setDisabledBoth(catalogBtn, catalogBtnM, false);
+      setDisabledBoth(outlineBtn, outlineBtnM, false);
+      setDisabledBoth(prevTop, prevTopM, chapterIndex <= 0);
+      setDisabledBoth(nextTop, nextTopM, chapterIndex >= spec.chapters.length - 1);
 
       updateModeButton();
+      updateOutlineButton();
 
       if (push) setHash(`#/${spec.id}/${chapter.id}/${realMode}`);
     }
@@ -672,31 +775,60 @@
       openChapter(specIndex, chapterIndex, mode, false);
     }
 
+    function runAndClose(fn) {
+      return () => {
+        closeMobileMenu();
+        fn();
+      };
+    }
+
     frame.addEventListener("load", () => {
       try {
-        injectSidebarStyle();
+        injectOutlineStyle();
       } catch (e) {
-        console.warn("Cannot inject sidebar style into iframe.", e);
+        console.warn("Cannot inject outline style into iframe.", e);
       }
     });
 
+    menuBtn.addEventListener("click", toggleMobileMenu);
+
     homeBtn.addEventListener("click", () => showHome(true));
     catalogBtn.addEventListener("click", goCatalog);
-    sideBtn.addEventListener("click", toggleSidebar);
+    outlineBtn.addEventListener("click", toggleOutline);
     prevTop.addEventListener("click", goPrev);
     nextTop.addEventListener("click", goNext);
     modeBtn.addEventListener("click", toggleMode);
+
+    homeBtnM.addEventListener("click", runAndClose(() => showHome(true)));
+    catalogBtnM.addEventListener("click", runAndClose(goCatalog));
+    outlineBtnM.addEventListener("click", runAndClose(toggleOutline));
+    prevTopM.addEventListener("click", runAndClose(goPrev));
+    nextTopM.addEventListener("click", runAndClose(goNext));
+    modeBtnM.addEventListener("click", runAndClose(toggleMode));
+
     window.addEventListener("hashchange", route);
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "ArrowLeft") goPrev();
       if (event.key === "ArrowRight") goNext();
-      if (event.key === "Escape") showHome(true);
+      if (event.key === "Escape") {
+        if (mobileMenu.classList.contains("open")) {
+          closeMobileMenu();
+        } else {
+          showHome(true);
+        }
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!mobileMenu.classList.contains("open")) return;
+      if (mobileMenu.contains(event.target) || menuBtn.contains(event.target)) return;
+      closeMobileMenu();
     });
 
     renderSpecs();
     updateModeButton();
-    updateSideButton();
+    updateOutlineButton();
     route();
   </script>
 </body>
