@@ -80,7 +80,8 @@
         background: var(--accent-soft);
       }
 
-      .mobile-menu-btn {
+      .mobile-menu-btn,
+      .mobile-outline-btn {
         display: none !important;
         min-width: 38px;
         font-size: 1.15rem;
@@ -99,9 +100,21 @@
         min-width: 0;
         text-align: center;
         font-weight: 700;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        line-height: 1.15;
+        font-size: 0.82rem;
+        word-break: normal;
+        overflow-wrap: normal;
+      }
+
+      .topbar .title .title-prefix {
         white-space: nowrap;
+      }
+
+      .topbar .title .title-main {
+        white-space: normal;
       }
 
       .disabled {
@@ -242,15 +255,16 @@
         }
 
         .topbar {
-          grid-template-columns: auto minmax(0, 1fr);
-          gap: 8px;
+          grid-template-columns: auto auto minmax(0, 1fr);
+          gap: 4px;
           min-height: var(--top-h);
           height: auto;
           padding-left: 8px;
           padding-right: 8px;
         }
 
-        .mobile-menu-btn {
+        .mobile-menu-btn,
+        .mobile-outline-btn {
           display: inline-flex !important;
         }
 
@@ -260,17 +274,23 @@
 
         .topbar .title {
           text-align: left;
-          font-size: 0.76rem;
-          line-height: 1.18;
+          font-size: 0.66rem;
+          line-height: 1.12;
           white-space: normal;
           text-overflow: clip;
-          overflow: hidden;
-          word-break: break-word;
-          overflow-wrap: anywhere;
+          overflow: visible;
+          max-height: none;
+          word-break: normal;
+          overflow-wrap: normal;
+        }
 
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
+        .topbar .title .title-prefix,
+        .topbar .title .title-main {
+          display: block;
+          max-width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: clip;
         }
 
         .mobile-menu {
@@ -317,6 +337,15 @@
       >
         ☰
       </button>
+      <button
+        id="outlineBtnMobileTop"
+        class="mobile-outline-btn"
+        type="button"
+        title="显示/隐藏左侧大纲"
+        aria-label="显示/隐藏左侧大纲"
+      >
+        📑
+      </button>
 
       <button id="homeBtn" class="desktop-btn" type="button">首页</button>
       <button id="catalogBtn" class="desktop-btn" type="button">章节</button>
@@ -348,7 +377,6 @@
     <nav id="mobileMenu" class="mobile-menu" aria-label="mobile navigation">
       <button id="homeBtnM" type="button">首页</button>
       <button id="catalogBtnM" type="button">章节</button>
-      <button id="outlineBtnM" type="button">📑 大纲</button>
       <button id="modeBtnM" type="button">💻 原版</button>
       <button id="prevTopM" type="button">上一章</button>
       <button id="nextTopM" type="button">下一章</button>
@@ -737,7 +765,7 @@
 
       const homeBtnM = $("homeBtnM");
       const catalogBtnM = $("catalogBtnM");
-      const outlineBtnM = $("outlineBtnM");
+      const outlineBtnM = $("outlineBtnMobileTop");
       const prevTopM = $("prevTopM");
       const nextTopM = $("nextTopM");
       const modeBtnM = $("modeBtnM");
@@ -791,6 +819,31 @@
         return `${spec.version} · ${spec.title}`;
       }
 
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function setCurrentTitle(title) {
+        const text = String(title || "");
+        const parts = text.split(" · ");
+
+        if (parts.length >= 2) {
+          const prefix = `${parts[0]} ·`;
+          const main = parts.slice(1).join(" · ");
+          currentTitle.innerHTML =
+            `<span class="title-prefix">${escapeHtml(prefix)}</span>` +
+            `<wbr>` +
+            `<span class="title-main">${escapeHtml(main)}</span>`;
+        } else {
+          currentTitle.textContent = text;
+        }
+      }
+
       function chapterTitle(spec, chapter) {
         if (chapter.label === "Head")
           return `${spec.version} · ${chapter.title}`;
@@ -829,17 +882,22 @@
 
       function updateModeButton() {
         const isMobile = currentMode === "mobile";
-        modeBtn.textContent = isMobile ? "📱" : "💻";
-        modeBtn.title = isMobile
-          ? "当前：手机版，点击切换到原版"
-          : "当前：原版，点击切换到手机版";
+        const nextModeText = isMobile ? "原版" : "手机版";
+        const nextModeIcon = isMobile ? "💻" : "📱";
+
+        // 按钮显示“点击后要切换到的模式”，而不是当前模式。
+        // 这样更符合直觉：看到 📱 就是切到手机版，看到 💻 就是切到原版。
+        modeBtn.textContent = nextModeIcon;
+        modeBtn.title = `切换到${nextModeText}`;
         modeBtn.setAttribute("aria-label", modeBtn.title);
 
-        modeBtnM.textContent = isMobile ? "📱 手机版" : "💻 原版";
+        modeBtnM.textContent = `${nextModeIcon} 切到${nextModeText}`;
         modeBtnM.title = modeBtn.title;
         modeBtnM.setAttribute("aria-label", modeBtn.title);
 
-        localStorage.setItem("pcie_reader_mode", currentMode);
+        // 不再写入 localStorage。
+        // 这样每次新打开页面时，仍然保持：
+        // 电脑端默认 pdf-html，手机端默认 mobile。
       }
 
       function updateOutlineButton() {
@@ -847,9 +905,7 @@
         outlineBtn.title = outlineVisible ? "隐藏左侧大纲" : "显示左侧大纲";
         outlineBtn.setAttribute("aria-label", outlineBtn.title);
 
-        outlineBtnM.textContent = outlineVisible
-          ? "📑 隐藏大纲"
-          : "📑 显示大纲";
+        outlineBtnM.textContent = "📑";
         outlineBtnM.title = outlineBtn.title;
         outlineBtnM.setAttribute("aria-label", outlineBtn.title);
 
@@ -989,7 +1045,7 @@
 
         heroTitle.textContent = siteData.title;
         heroDesc.textContent = siteData.description;
-        currentTitle.textContent = siteData.title;
+        setCurrentTitle(siteData.title);
 
         specSection.style.display = "";
         chapterSection.style.display = "none";
@@ -1029,7 +1085,7 @@
 
         heroTitle.textContent = spec.title;
         heroDesc.textContent = `${spec.version}${spec.date ? " · " + spec.date : ""}`;
-        currentTitle.textContent = specTitle(spec);
+        setCurrentTitle(specTitle(spec));
 
         specSection.style.display = "none";
         chapterSection.style.display = "";
@@ -1080,7 +1136,7 @@
         document.body.classList.add("reading");
         frame.src = makePath(spec, chapter, realMode);
 
-        currentTitle.textContent = chapterTitle(spec, chapter);
+        setCurrentTitle(chapterTitle(spec, chapter));
         document.title = `${chapterTitle(spec, chapter)} - ${siteData.title}`;
 
         setDisabledBoth(catalogBtn, catalogBtnM, false);
@@ -1215,7 +1271,7 @@
         runAndClose(() => showHome(true)),
       );
       catalogBtnM.addEventListener("click", runAndClose(goCatalog));
-      outlineBtnM.addEventListener("click", runAndClose(toggleOutline));
+      outlineBtnM.addEventListener("click", toggleOutline);
       prevTopM.addEventListener("click", runAndClose(goPrev));
       nextTopM.addEventListener("click", runAndClose(goNext));
       modeBtnM.addEventListener("click", runAndClose(toggleMode));
