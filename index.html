@@ -238,12 +238,14 @@
 
       @media (max-width: 640px) {
         :root {
-          --top-h: 50px;
+          --top-h: 58px;
         }
 
         .topbar {
           grid-template-columns: auto minmax(0, 1fr);
           gap: 8px;
+          min-height: var(--top-h);
+          height: auto;
           padding-left: 8px;
           padding-right: 8px;
         }
@@ -258,7 +260,17 @@
 
         .topbar .title {
           text-align: left;
-          font-size: 0.95rem;
+          font-size: 0.76rem;
+          line-height: 1.18;
+          white-space: normal;
+          text-overflow: clip;
+          overflow: hidden;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
         }
 
         .mobile-menu {
@@ -366,8 +378,8 @@
     <script>
       /*
       推荐目录：
-      specs/pcie-6.4/pdf-html/   pdf2htmlEX 生成的原版网页
-      specs/pcie-6.4/mobile/     MinerU / Markdown 生成的手机版网页
+      specs/pcie-6.4/pdf-html/   pdf2htmlEX 生成的原版网页，电脑端默认加载
+      specs/pcie-6.4/mobile/     MinerU / Markdown 生成的手机版网页，手机端默认加载
       specs/pcie-6.4/pdf/        原始或拆分 PDF，可选
 
       后续添加 PCIe 4.0 / 5.0 / 6.0 时，在 specs 数组里复制一个对象即可。
@@ -742,7 +754,14 @@
 
       let currentSpecIndex = -1;
       let currentChapterIndex = -1;
-      let currentMode = localStorage.getItem("pcie_reader_mode") || "original";
+
+      function getDeviceDefaultMode() {
+        return window.matchMedia("(max-width: 640px)").matches
+          ? "mobile"
+          : "original";
+      }
+
+      let currentMode = getDeviceDefaultMode();
       let outlineVisible =
         localStorage.getItem("pcie_reader_outline") !== "hidden";
 
@@ -1160,7 +1179,10 @@
           return;
         }
 
-        const mode = parts[2] === "mobile" ? "mobile" : "original";
+        const mode =
+          parts[2] === "mobile" || parts[2] === "original"
+            ? parts[2]
+            : getDeviceDefaultMode();
         openChapter(specIndex, chapterIndex, mode, false);
       }
 
